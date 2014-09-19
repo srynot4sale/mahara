@@ -1,0 +1,20 @@
+default:
+    paths:
+        features: ./features
+        bootstrap: ./classes/bootstrap
+    context:
+        class: mahara_context
+    extensions:
+        Behat\MinkExtension\Extension:
+            base_url: http://localhost:8000/
+            goutte: ~
+            selenium2: ~
+    formatter:
+        name: pretty
+        parameters:
+            decorated:              true
+            verbose:                false
+            time:                   true
+            language:               en
+            output_path:            null
+            multiline_arguments:    true

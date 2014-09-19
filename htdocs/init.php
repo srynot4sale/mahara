@@ -13,6 +13,8 @@ defined('INTERNAL') || die();
 
 $CFG = new StdClass;
 $CFG->docroot = dirname(__FILE__) . '/';
+$CFG->testroot = dirname(dirname(__FILE__)) . '/test';
+
 //array containing site options from database that are overrided by $CFG
 $OVERRIDDEN = array();
 
@@ -71,6 +73,22 @@ $CFG = (object)array_merge((array)$cfg, (array)$CFG);
 require_once('config-defaults.php');
 $CFG = (object)array_merge((array)$cfg, (array)$CFG);
 
+// Get the test site status from file
+require_once(dirname(dirname(__FILE__)) . '/test/behat/classes/lib.php');
+require_once(dirname(dirname(__FILE__)) . '/test/behat/classes/behat_util.php');
+$test_status = behat_util::get_test_site_status_from_file();
+if ($test_status == TEST_SITE_INSTALLING
+    || $test_status == TEST_SITE_INSTALLED
+    || $test_status == TEST_SITE_ENABLED) {
+    // Test mode is enabled
+    // switching $CFG->X for $CFG->behat_X.
+    $CFG->wwwroot = $CFG->behat_wwwroot;
+    $CFG->dbprefix = $CFG->behat_dbprefix;
+    $CFG->dataroot = $CFG->behat_dataroot;
+    // Turn off the production mode
+    $CFG->productionmode = false;
+}
+
 // Fix up paths in $CFG
 foreach (array('docroot', 'dataroot') as $path) {
     $CFG->{$path} = (substr($CFG->{$path}, -1) != '/') ? $CFG->{$path} . '/' : $CFG->{$path};
@@ -96,7 +114,6 @@ $CFG->filepermissions = $CFG->directorypermissions & 0666;
 $errorlevel = $CFG->error_reporting;
 error_reporting($errorlevel);
 set_error_handler('error', $errorlevel);
-
 // core libraries
 require('mahara.php');
 ensure_sanity();
