@@ -158,7 +158,6 @@ class behat_util {
             }
         }
         else {
-            self::update_test_site_status_to_file(TEST_SITE_NOTINSTALLED);
             return TEST_SITE_NOTINSTALLED;
         }
     }
