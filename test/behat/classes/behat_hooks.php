@@ -128,6 +128,9 @@ class behat_hooks extends behat_base {
     public function before_scenario($event) {
         global $cfg;
 
+        require_once('behat_util.php');
+        require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/htdocs/lib/cli.php');
+
         // Check if the browser is running and supports javascript
         $driverexceptionmsg = 'Selenium server is not running, you need to start it to run tests that involve Javascript. ';
         try {
@@ -148,6 +151,9 @@ class behat_hooks extends behat_base {
         // Register the named selectors for mahara
         behat_selectors::register_mahara_selectors($session);
         behat_context_helper::set_session($session);
+
+        // Reset database and dataroot
+        behat_util::reset_test_site();
 
         // Reset the browser
         $session->restart();

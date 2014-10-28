@@ -54,7 +54,7 @@ class behat_util {
         self::update_test_site_status_to_file(TEST_SITE_INSTALLING);
 
         // New dataroot.
-        cli::cli_print('Removing the dataroot for behat tests.');
+        #cli::cli_print('Removing the dataroot for behat tests.');
         self::remove_dataroot();
 
         // Changing the cwd to <docroot>.
@@ -62,7 +62,7 @@ class behat_util {
         $output = array();
         $status = 0;
 
-        cli::cli_print('Installing a fresh mahara site for behat tests.');
+        #cli::cli_print('Installing a fresh mahara site for behat tests.');
         exec("php admin/cli/install.php --adminpassword=Password1 --adminemail=behat@maharatest.org --sitename='" . self::TESTSITENAME . "'", $output, $status);
         if ($status != 0) {
             throw new Exception('Installing failed: ' . implode("\n", $output));
@@ -99,7 +99,7 @@ class behat_util {
         $output = array();
         $status = 0;
 
-        cli::cli_print('Installing a fresh mahara site for behat tests.');
+        #cli::cli_print('Installing a fresh mahara site for behat tests.');
         exec("php admin/cli/install.php --adminpassword=Password1 --adminemail=behat@maharatest.org --sitename='" . self::TESTSITENAME . "'", $output, $status);
         if ($status != 0) {
             throw new Exception('Installing failed: ' . implode("\n", $output));
@@ -124,14 +124,14 @@ class behat_util {
         }
 
         // Remove dataroot.
-        cli::cli_print('Removing the dataroot for behat tests.');
+        #cli::cli_print('Removing the dataroot for behat tests.');
         self::remove_dataroot();
 
         // Changing the cwd to <docroot>.
         chdir(dirname(dirname(dirname(dirname(__FILE__)))) . '/htdocs');
         $output = array();
         $status = 0;
-        cli::cli_print('Drop the mahara database for behat tests.');
+        #cli::cli_print('Drop the mahara database for behat tests.');
         exec("php admin/cli/uninstall.php", $output, $status);
         if ($status != 0) {
             throw new Exception('Uninstalling failed: ' . implode("\n", $output));
