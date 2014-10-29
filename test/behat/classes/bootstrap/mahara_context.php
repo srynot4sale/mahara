@@ -51,7 +51,7 @@ class mahara_context extends MinkContext {
      */
     public function __construct(array $parameters) {
         // Initialize all sub context here
-        $subcontexts = array('behat_hooks', );
+        $subcontexts = array('behat_hooks', 'behat_general');
 
         foreach ($subcontexts as $classname) {
             $path = dirname(dirname(__FILE__)) . '/' . $classname . '.php';
@@ -94,27 +94,6 @@ class mahara_context extends MinkContext {
         $this->getSession()->visit($this->locate_path('/admin/index.php'));
     }
 
-    /**
-     * Click on the element and wait.
-     *
-     * @When /^I click on "(?P<element>[^"]*)" "(?P<selector>[^"]*)"$/
-     * @param string $element Element we look for
-     */
-    public function i_click_on($element, $selector) {
-
-        list ($selector, $locator) = $this->transform_locator($selector, $element);
-        $nodes = $this->getSession()->getPage()->findAll($selector, $locator);
-        // Find the first visible node
-        if (count($nodes) > 0) {
-            foreach ($nodes as $node) {
-                if ($this->can_run_javascript() && $node->isVisible()) {
-                    $node->click();
-                    return;
-                }
-            }
-        }
-    }
-
     protected function transform_locator($selector, $element) {
         if ($selector == 'named') {
             if (preg_match('/^(\w+)=(.+)$/', $element, $matches) === 1) {
@@ -146,19 +125,38 @@ class mahara_context extends MinkContext {
     }
 
     /**
-     * Click on the link with specified id|title|value and wait.
+     * Clicks link with specified id|title|alt|text.
      *
-     * @When /^I click on the link "(?P<link>[^"]*)"$/
-     * @param string $element Element we look for
+     * This overwrites the upstream step "@When /^(?:|I )follow "(?P<link>(?:[^"]|\\")*)"$/"
+     * hence why this doc block is not in the usual format. If it was in the usual format then
+     * Behat would find two conflicting regex and complain! So this is a bit of a hack :-)
+     *
+     * The reason for overwriting the upstream step is that it fails when there are two links
+     * on the page with the same locator, but the first is hidden. It tried clicking the first
+     * and fails, rather than defaulting to the first visible link (like this new step does).
      */
-    public function i_click_on_the_link($link) {
+    public function clickLink($locator)
+    {
+        $locator = $this->fixStepArgument($locator);
 
-        $page = $this->getSession()->getPage();
-        $node = $page->find('named', array('link', $this->getSession()->getSelectorsHandler()->xpathLiteral($link)));
-        if ($node) {
-            $this->ensure_node_is_visible($node);
-            $node->click();
+        $links = $this->getSession()->getPage()->findAll('named', array(
+            'link', $this->getSession()->getSelectorsHandler()->xpathLiteral($locator)
+        ));
+
+        if (!$links) {
+            throw new ElementNotFoundException(
+                $this->getSession(), 'link', 'id|title|alt|text', $locator
+            );
         }
+
+        foreach ($links as $link) {
+            if ($link->isVisible()) {
+                $link->click();
+                return;
+            }
+        }
+
+        throw new ExpectationException('Could not find a visible link with the "id|title|alt|text" of  "'.$locator.'"', $this->getSession());
     }
 
     /**
@@ -188,82 +186,6 @@ class mahara_context extends MinkContext {
     }
 
     /**
-     * Checks, that the specified element with given value is visible. Only available in tests using Javascript.
-     *
-     * @Then /^I should see "(?P<value>(?:[^"]|\\")*)" in the element "(?P<element>(?:[^"]|\\")*)" "(?P<selectortype>(?:[^"]|\\")*)"$/
-     * @param string $element
-     * @param string $selectortype
-     * @param string $value
-     * @return void
-     */
-    public function I_should_see_in_the_element($value, $element, $selectortype) {
-
-        list ($selector, $locator) = $this->transform_locator($selectortype, $element);
-        $page = $this->getSession()->getPage();
-        $node = $page->find($selector, $locator);
-
-        if (null === $node) {
-            throw new ElementNotFoundException($this->getSession(), 'element', $selector, $locator);
-        }
-
-        if ($this->can_run_javascript() && !$node->isVisible()) {
-            throw new ExpectationException('The element "' . $element . '" is not visible', $this->getSession());
-        }
-
-        // $value can be a regexp pattern with format: "regexp:<PATTERN>"
-        if (preg_match('/^regexp:(.+)$/', $value, $matches) === 1) {
-            $pat = '`' . $matches[1] . '`';
-            if (preg_match($pat, $node->getValue()) !== 1
-                && preg_match($pat, $node->getText()) !== 1
-                && preg_match($pat, $node->getHtml()) !== 1) {
-                throw new ElementNotFoundException($this->getSession(), 'element with regexp: "' . $pat . '"', $selector, $locator);
-            }
-        }
-        else if ($node->getValue() !== $value
-                && $node->getText() !== $value) {
-            throw new ElementNotFoundException($this->getSession(), 'element with value "' . $value . '"', $selector, $locator);
-        }
-    }
-
-    /**
-     * Checks, that the specified element without given value is visible. Only available in tests using Javascript.
-     *
-     * @Then /^I should see not "(?P<value>(?:[^"]|\\")*)" in the element "(?P<element>(?:[^"]|\\")*)" "(?P<selectortype>(?:[^"]|\\")*)"$/
-     * @param string $element
-     * @param string $selectortype
-     * @param string $value
-     * @return void
-     */
-    public function I_should_see_not_in_the_element($value, $element, $selectortype) {
-
-        list ($selector, $locator) = $this->transform_locator($selectortype, $element);
-        $page = $this->getSession()->getPage();
-        $node = $page->find($selector, $locator);
-
-        if (null === $node) {
-            throw new ElementNotFoundException($this->getSession(), 'element', $selector, $locator);
-        }
-
-        if ($this->can_run_javascript() && !$node->isVisible()) {
-            throw new ExpectationException('The element "' . $element . '" is not visible', $this->getSession());
-        }
-
-        // $value can be a regexp pattern with format: "regexp:<PATTERN>"
-        if (preg_match('/^regexp:(.+)$/', $value, $matches) === 1) {
-            $pat = '`' . $matches[1] . '`';
-            if (preg_match($pat, $node->getValue()) === 1
-                || preg_match($pat, $node->getText()) === 1
-                || preg_match($pat, $node->getHtml()) === 1) {
-                throw new ExpectationException('The element "' . $element . '" with regexp: "' . $pat . '" is found', $this->getSession());
-            }
-        }
-        else if ($node->getValue() === $value
-                || $node->getText() === $value) {
-            throw new ExpectationException('The element "' . $element . '" with value "' . $value . '" is found', $this->getSession());
-        }
-    }
-
-    /**
      * Checks, that field with specified identifier exists on page.
      *
      * @Then /^(?:|I )should see the field "(?P<field>[^"]*)"$/
@@ -272,27 +194,4 @@ class mahara_context extends MinkContext {
     {
         $this->assertSession()->elementExists('named', array('field', $this->getSession()->getSelectorsHandler()->xpathLiteral($field)));
     }
-
-    /**
-     * Fills in an element.
-     *
-     * @When /^(?:|I )fill in "(?P<element>(?:[^"]|\\")*)" "(?P<selectortype>(?:[^"]|\\")*)" with "(?P<value>(?:[^"]|\\")*)"$/
-     */
-    public function fillField($element, $selectortype, $value)
-    {
-        list ($selector, $locator) = $this->transform_locator($selectortype, $element);
-        $node = $this->getSession()->getPage()->find($selector, $locator);
-
-        if (null === $node) {
-            throw new ElementNotFoundException($this->getSession(), 'element', $selector, $locator);
-        }
-
-        if ($this->can_run_javascript() && !$node->isVisible()) {
-            throw new ExpectationException('The element "' . $element . '" is not visible', $this->getSession());
-        }
-
-        $value = $this->fixStepArgument($value);
-        $node->setValue($value);
-    }
-
 }
