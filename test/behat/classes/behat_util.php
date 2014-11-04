@@ -63,7 +63,7 @@ class behat_util {
         $status = 0;
 
         #cli::cli_print('Installing a fresh mahara site for behat tests.');
-        exec("php admin/cli/install.php --adminpassword=Password1 --adminemail=behat@maharatest.org --sitename='" . self::TESTSITENAME . "'", $output, $status);
+        exec("php admin/cli/install.php --adminpassword=Password1 --adminemail=admin@example.com --sitename='" . self::TESTSITENAME . "'", $output, $status);
         if ($status != 0) {
             throw new Exception('Installing failed: ' . implode("\n", $output));
         }

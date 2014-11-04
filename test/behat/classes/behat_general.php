@@ -20,7 +20,8 @@ use Behat\Mink\Exception\ExpectationException as ExpectationException,
     Behat\Mink\Exception\ElementNotFoundException as ElementNotFoundException,
     Behat\Mink\Exception\DriverException as DriverException,
     WebDriver\Exception\NoSuchElement as NoSuchElement,
-    WebDriver\Exception\StaleElementReference as StaleElementReference;
+    WebDriver\Exception\StaleElementReference as StaleElementReference,
+    Behat\Gherkin\Node\TableNode as TableNode;
 
 /**
  * Cross component steps definitions.
@@ -967,4 +968,66 @@ class behat_general extends behat_base {
         $field = behat_field_manager::get_form_field_from_label($fieldlocator, $this);
         $field->set_value($value);
     }
+
+    /**
+     * Creates the specified element (if a fixture has been created)
+     *
+     * @Given /^the following "(?P<element_string>(?:[^"]|\\")*)" exist:$/
+     *
+     * @throws Exception
+     * @param string    $elementname The name of the entity to add
+     * @param TableNode $data
+     */
+    public function the_following_exist($elementname, TableNode $data) {
+
+        switch ($elementname) {
+
+            case 'users':
+
+                // Check headers
+                $requiredfields = array('firstname', 'lastname', 'username');
+
+                foreach ($data->getHash() as $elementdata) {
+
+                    // Check if all the required fields are there.
+                    foreach ($requiredfields as $requiredfield) {
+                        if (!isset($elementdata[$requiredfield])) {
+                            throw new Exception($elementname . ' requires the field ' . $requiredfield . ' to be specified');
+                        }
+                    }
+
+                    // Default email is username@example.com
+                    if (empty($elementdata['email'])) {
+                        $elementdata['email'] = "{$elementdata['username']}@example.com";
+                    }
+
+                    // Default password Behat uses for logins
+                    if (empty($elementdata['password'])) {
+                        $elementdata['password'] = 'Password1';
+                    }
+
+                    chdir(dirname(dirname(dirname(dirname(__FILE__)))) . '/htdocs');
+                    $output = array();
+                    $status = 0;
+
+                    $params = '';
+                    foreach ($elementdata as $key => $value) {
+                        $params .= " --{$key}=\"{$value}\"";
+                    }
+
+                    exec("php admin/cli/create_user.php {$params}", $output, $status);
+                    if ($status != 0) {
+                        throw new Exception('Run create user script failed: ' . implode("\n", $output));
+                    }
+                }
+
+
+                break;
+
+            default:
+
+                throw new PendingException($elementname . ' data generator is not implemented');
+        }
+    }
+
 }
